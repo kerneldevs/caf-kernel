@@ -55,7 +55,9 @@ extern u32 msm_fb_debug_enabled;
 extern struct workqueue_struct *mdp_dma_wq;
 
 int vsync_start_y_adjust = 4;
-
+#ifdef CONFIG_LGE_BLUE_ERROR_HANDLER
+extern int LG_ErrorHandler_enable ;	/*LGE_CHANGE [bluerti@lge.com] */
+#endif
 static void mdp_dma2_update_lcd(struct msm_fb_data_type *mfd)
 {
 	MDPIBUF *iBuf = &mfd->ibuf;
@@ -147,6 +149,9 @@ static void mdp_dma2_update_lcd(struct msm_fb_data_type *mfd)
 		}
 	}
 
+	/* LGE_CHANGE, Enabling dither */
+	dma2_cfg_reg |= DMA_DITHER_EN;
+
 	src = (uint8 *) iBuf->buf;
 	/* starting input address */
 	src += iBuf->dma_x * outBpp + iBuf->dma_y * ystride;
@@ -183,17 +188,35 @@ static void mdp_dma2_update_lcd(struct msm_fb_data_type *mfd)
 	}
 
 	if (mddi_dest) {
+
 #ifdef CONFIG_FB_MSM_MDP22
 		MDP_OUTP(MDP_CMD_DEBUG_ACCESS_BASE + 0x0194,
 			 (iBuf->dma_y << 16) | iBuf->dma_x);
 		MDP_OUTP(MDP_CMD_DEBUG_ACCESS_BASE + 0x01a0, mddi_ld_param);
 		MDP_OUTP(MDP_CMD_DEBUG_ACCESS_BASE + 0x01a4,
-			 (mddi_pkt_desc << 16) | mddi_vdo_packet_reg);
+	/* Don't apply 6013 patch only when using Hitachi HVGA module. 2010-07-28. minjong.gong@lge.com */
+	#if defined (CONFIG_FB_MSM_MDDI_HITACHI_HVGA)
+			(MDDI_VDO_PACKET_DESC << 16) | mddi_vdo_packet_reg);
+	#else
+			(mddi_pkt_desc << 16) | mddi_vdo_packet_reg);
+	#endif
 #else
 		MDP_OUTP(MDP_BASE + 0x90010, (iBuf->dma_y << 16) | iBuf->dma_x);
 		MDP_OUTP(MDP_BASE + 0x00090, mddi_ld_param);
+/* LGE_CHANGE [dojip.kim@lge.com] 2010-04-23, [LS670] fixed the pixel format */
+#if defined(CONFIG_FB_MSM_MDDI_NOVATEK_HVGA)
 		MDP_OUTP(MDP_BASE + 0x00094,
-			 (mddi_pkt_desc << 16) | mddi_vdo_packet_reg);
+			 (0x5565 /*MDDI_VDO_PACKET_DESC*/ << 16) | mddi_vdo_packet_reg);
+#else /* original */
+		MDP_OUTP(MDP_BASE + 0x00094,
+	/* Don't apply 6013 patch only when using Hitachi HVGA module. 2010-07-28. minjong.gong@lge.com */
+	#if defined (CONFIG_FB_MSM_MDDI_HITACHI_HVGA)
+			(MDDI_VDO_PACKET_DESC << 16) | mddi_vdo_packet_reg);
+	#else
+			(mddi_pkt_desc << 16) | mddi_vdo_packet_reg);
+	#endif
+#endif
+
 #endif
 	} else {
 		/* setting EBI2 LCDC write window */
@@ -519,6 +542,13 @@ void mdp_dma_pan_update(struct fb_info *info)
 		/* waiting for this update to complete */
 		mfd->pan_waiting = TRUE;
 		wait_for_completion_killable(&mfd->pan_comp);
+#ifdef CONFIG_LGE_BLUE_ERROR_HANDLER
+		/*LGE_CHANGE_S [bluerti@lge.com] 2009-08-24 */
+		if (LG_ErrorHandler_enable) {
+			mfd->dma_fnc(mfd);
+		}
+		/*LGE_CHANGE_E [bluerti@lge.com] */
+#endif
 	} else
 		mfd->dma_fnc(mfd);
 }

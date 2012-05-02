@@ -55,6 +55,12 @@ static struct snd_ctxt the_snd;
 #define SND_SET_VOLUME_PROC 3
 #define SND_AVC_CTL_PROC 29
 #define SND_AGC_CTL_PROC 30
+#define SND_SET_FM_RADIO_VOLUME_PROC 72
+
+//LGE_SND_UPDATE_S [
+#define SND_72XX_RPC_EXTCMD_PROC 40
+#define SND_AUDIO_CAL_PROC 41
+//LGE_SND_UPDATE_E ]
 
 struct rpc_snd_set_device_args {
 	uint32_t device;
@@ -86,25 +92,80 @@ struct rpc_snd_agc_ctl_args {
 	uint32_t client_data;
 };
 
+//LGE_SND_UPDATE_S [
+struct rpc_snd_72xx_rpc_extcmd_args {
+	uint32_t rpc_extcmd;
+	uint32_t option;
+
+     uint32_t cb_func;
+     uint32_t client_data;
+};
+ 
+struct rpc_snd_audio_cal_args {
+	uint32_t nCalType;
+	uint32_t nCmd;
+	uint32_t nDevice;
+	uint32_t nIndex;
+	uint32_t nSubIndex;
+	uint32_t nItem;
+
+     uint32_t cb_func;
+     uint32_t client_data;
+};
+//LGE_SND_UPDATE_E ]
+ 
 struct snd_set_device_msg {
-	struct rpc_request_hdr hdr;
+    struct rpc_request_hdr hdr;
 	struct rpc_snd_set_device_args args;
 };
-
+ 
 struct snd_set_volume_msg {
-	struct rpc_request_hdr hdr;
+    struct rpc_request_hdr hdr;
 	struct rpc_snd_set_volume_args args;
 };
 
 struct snd_avc_ctl_msg {
-	struct rpc_request_hdr hdr;
+    struct rpc_request_hdr hdr;
 	struct rpc_snd_avc_ctl_args args;
 };
 
 struct snd_agc_ctl_msg {
-	struct rpc_request_hdr hdr;
+    struct rpc_request_hdr hdr;
 	struct rpc_snd_agc_ctl_args args;
 };
+
+//LGE_SND_UPDATE_S [
+struct snd_72xx_rpc_extcmd_msg {
+    struct rpc_request_hdr hdr;
+    struct rpc_snd_72xx_rpc_extcmd_args args;
+};
+
+struct snd_72xx_rpc_extcmd_msg_rep {
+	struct rpc_reply_hdr hdr;
+    uint32_t result;
+} extcmd_msg_rep;
+
+struct snd_audio_cal_msg {
+    struct rpc_request_hdr hdr;
+    struct rpc_snd_audio_cal_args args;
+};
+
+struct snd_audio_cal_msg_rep {
+	struct rpc_reply_hdr hdr;
+    uint32_t result;
+} cal_msg_rep;
+
+struct rpc_snd_set_fm_radio_vol_args {
+     uint32_t volume;
+     uint32_t cb_func;
+     uint32_t client_data;
+};
+
+struct snd_set_fm_radio_vol_msg {
+    struct rpc_request_hdr hdr;
+    struct rpc_snd_set_fm_radio_vol_args args;
+};
+//LGE_SND_UPDATE_E ]
 
 struct snd_endpoint *get_snd_endpoints(int *size);
 
@@ -150,8 +211,21 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	struct snd_avc_ctl_msg avc_msg;
 	struct snd_agc_ctl_msg agc_msg;
 
+//LGE_SND_UPDATE_S [
+	struct snd_72xx_rpc_extcmd_msg rpc_extcmd_msg;
+	struct snd_audio_cal_msg cal_msg;
+//LGE_SND_UPDATE_E ]
+
 	struct msm_snd_device_config dev;
 	struct msm_snd_volume_config vol;
+
+//LGE_SND_UPDATE_S [
+    struct msm_snd_72xx_rpc_extcmd_config rpc_extcmd_conf;
+	struct msm_snd_audio_cal_config snd_audio_cal_conf;
+	struct msm_snd_set_fm_radio_vol_param fmradiovol;
+	struct snd_set_fm_radio_vol_msg fmrmsg;
+//LGE_SND_UPDATE_E ]
+
 	struct snd_ctxt *snd = file->private_data;
 	int rc = 0;
 
@@ -263,6 +337,93 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case SND_GET_ENDPOINT:
 		rc = get_endpoint(snd, arg);
 		break;
+
+//LGE_SND_UPDATE_S [
+	case SND_72XX_RPC_EXTCMD:
+		if (copy_from_user(&rpc_extcmd_conf, (void __user *) arg, sizeof(rpc_extcmd_conf))) {
+			MM_ERR("SND_72XX_RPC_EXTCMD: invalid pointer\n");
+			rc = -EFAULT;
+		break;
+	}
+
+		rpc_extcmd_msg.args.rpc_extcmd = cpu_to_be32(rpc_extcmd_conf.rpc_extcmd);
+		rpc_extcmd_msg.args.option = cpu_to_be32(rpc_extcmd_conf.option);
+
+		rpc_extcmd_msg.args.cb_func = -1;
+		rpc_extcmd_msg.args.client_data = 0;
+
+		MM_INFO("SND_72XX_RPC_EXTCMD %d %d \n", rpc_extcmd_conf.rpc_extcmd, rpc_extcmd_conf.option);
+
+		rc = msm_rpc_call_reply(snd->ept,
+			SND_72XX_RPC_EXTCMD_PROC,
+			&rpc_extcmd_msg, sizeof(rpc_extcmd_msg), &(extcmd_msg_rep), sizeof (extcmd_msg_rep), 5 * HZ);
+					
+		if (rc < 0){
+			MM_ERR("rpc err because");
+		}
+		else {
+			rpc_extcmd_conf.result = be32_to_cpu(extcmd_msg_rep.result);
+			MM_INFO("snd 72xx rpc extcmd result=[%d]\n", rpc_extcmd_conf.result);
+			if (copy_to_user((void __user *)arg, &rpc_extcmd_conf, sizeof(rpc_extcmd_conf))) {
+				MM_INFO("snd_ioctl get voccal: invalid write pointer.\n");
+				rc = -EFAULT;
+			}
+		}
+		break;
+
+	case SND_AUDIO_CAL:
+		if (copy_from_user(&snd_audio_cal_conf, (void __user *) arg, sizeof(snd_audio_cal_conf))) {
+			MM_ERR("SND_AUDIO_CAL: invalid pointer\n");
+			rc = -EFAULT;
+			break;
+		}
+
+		cal_msg.args.nCalType = cpu_to_be32(snd_audio_cal_conf.nCalType);
+		cal_msg.args.nCmd = cpu_to_be32(snd_audio_cal_conf.nCmd);
+		cal_msg.args.nDevice = cpu_to_be32(snd_audio_cal_conf.nDevice);
+		cal_msg.args.nIndex = cpu_to_be32(snd_audio_cal_conf.nIndex);
+		cal_msg.args.nSubIndex = cpu_to_be32(snd_audio_cal_conf.nSubIndex);
+		cal_msg.args.nItem = cpu_to_be32(snd_audio_cal_conf.nItem);		
+
+		cal_msg.args.cb_func = -1;
+		cal_msg.args.client_data = 0;
+
+		MM_INFO("SND_AUDIO_CAL %d %d %d %d %d %d\n", snd_audio_cal_conf.nCalType, snd_audio_cal_conf.nCmd,
+					snd_audio_cal_conf.nDevice, snd_audio_cal_conf.nIndex, snd_audio_cal_conf.nSubIndex, snd_audio_cal_conf.nItem);
+
+		rc = msm_rpc_call_reply(snd->ept,
+			SND_AUDIO_CAL_PROC,
+			&cal_msg, sizeof(cal_msg), &(cal_msg_rep), sizeof (cal_msg_rep), 5 * HZ);
+
+		if (rc < 0){
+			MM_ERR("rpc err because");
+		}
+		else {
+			snd_audio_cal_conf.result = be32_to_cpu(cal_msg_rep.result);
+			MM_INFO("snd audio cal result=[%d]\n", snd_audio_cal_conf.result);
+			if (copy_to_user((void __user *)arg, &snd_audio_cal_conf, sizeof(snd_audio_cal_conf))) {
+				MM_INFO("snd_ioctl get voccal: invalid write pointer.\n");
+				rc = -EFAULT;
+			}
+		}
+		break;
+	case SND_SET_FM_RADIO_VOLUME:
+		if (copy_from_user(&fmradiovol, (void __user *) arg, sizeof(fmradiovol))) {
+			pr_err("snd_ioctl set amp_gain: invalid pointer.\n");
+			rc = -EFAULT;
+			break;
+		}
+		fmrmsg.args.volume = cpu_to_be32(fmradiovol.volume);
+		fmrmsg.args.cb_func = -1;
+		fmrmsg.args.client_data = 0;
+
+		pr_info("snd_set_fm_radio_volume %d\n", fmradiovol.volume);
+
+		rc = msm_rpc_call(snd->ept,
+			SND_SET_FM_RADIO_VOLUME_PROC,
+			&fmrmsg, sizeof(fmrmsg), 5 * HZ);
+		break;
+//LGE_SND_UPDATE_E ]
 
 	default:
 		MM_ERR("unknown command\n");

@@ -25,6 +25,8 @@
 #include "clock.h"
 #include "clock-pcom.h"
 
+#include <mach/socinfo.h>
+
 struct clk_pcom {
 	unsigned count;
 	bool always_on;

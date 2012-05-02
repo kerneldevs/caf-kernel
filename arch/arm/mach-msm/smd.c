@@ -47,6 +47,11 @@
 #define CONFIG_DSPS 1
 #endif
 
+#ifdef CONFIG_LGE_BLUE_ERROR_HANDLER
+#include "lge/lge_errorhandler.h"
+extern int LG_ErrorHandler_enable;
+#endif
+
 #define MODULE_NAME "msm_smd"
 #define SMEM_VERSION 0x000B
 #define SMD_VERSION 0x00020000
@@ -172,6 +177,15 @@ static inline void notify_dsps_smd(void)
 	MSM_TRIG_A2DSPS_SMD_INT;
 }
 
+#ifdef CONFIG_LGE_HANDLE_MODEM_CRASH
+#define LGE_ERROR_MAX_ROW               50
+#define LGE_ERROR_MAX_COLUMN            80
+#define LGE_ERR_MESSAGE_BUF_LEN   (LGE_ERROR_MAX_ROW*LGE_ERROR_MAX_COLUMN +8)
+
+char *error_modem_message = NULL;
+void msm_pm_flush_console(void);
+#endif
+
 void smd_diag(void)
 {
 	char *x;
@@ -183,19 +197,64 @@ void smd_diag(void)
 		SMD_INFO("smem: DIAG '%s'\n", x);
 	}
 
+	/* AMSS's error handler has some delay */
+	mdelay(2000);
+
 	x = smem_get_entry(SMEM_ERR_CRASH_LOG, &size);
 	if (x != 0) {
 		x[size - 1] = 0;
+#ifdef CONFIG_LGE_HANDLE_MODEM_CRASH
+		pr_err("vvvvv\n");
+#endif
 		pr_err("smem: CRASH LOG\n'%s'\n", x);
+#ifdef CONFIG_LGE_HANDLE_MODEM_CRASH
+		pr_err("^^^^^\n");
+#endif
 	}
-}
+#ifdef CONFIG_LGE_HANDLE_MODEM_CRASH
+	x = smem_find(SMEM_LGE_ERR_MESSAGE, LGE_ERR_MESSAGE_BUF_LEN);
+	if (x != 0) {
+		int i;
+		char *message = (char *)x;
+		error_modem_message = (char *)x;
 
+		pr_err("smem: SMEM_LGE_ERR_MESSAGE\n");
+
+		for (i=0; i < LGE_ERROR_MAX_ROW; i++) {
+			pr_err("%s\n", message);
+			message += LGE_ERROR_MAX_COLUMN;
+		}
+	}
+#endif
+}
 
 static void handle_modem_crash(void)
 {
-	pr_err("MODEM/AMSS has CRASHED\n");
-	smd_diag();
+#ifdef CONFIG_LGE_HANDLE_MODEM_CRASH
+	printk(KERN_INFO">>>>>\n");
+	printk(KERN_INFO"Modem crash\n");
+	printk(KERN_INFO"<<<<<\n");
+#endif
 
+	pr_err("ARM9 has CRASHED\n");
+	smd_diag();
+#ifndef CONFIG_LGE_BLUE_ERROR_HANDLER
+#ifdef CONFIG_LGE_HANDLE_MODEM_CRASH
+	/* flush console before reboot
+	 * from google's mahimahi kernel
+	 * 2010-05-04, cleaneye.kim@lge.com
+	 */
+	msm_pm_flush_console();
+
+#if 0
+	atomic_notifier_call_chain(&panic_notifier_list, 0, 0x87654321);
+#endif
+#if 1
+	smsm_reset_modem(SMSM_SYSTEM_REBOOT);
+#else
+	smsm_reset_modem(SMSM_SYSTEM_DOWNLOAD);
+#endif
+#endif
 	/* hard reboot if possible FIXME
 	if (msm_reset_hook)
 		msm_reset_hook();
@@ -204,6 +263,7 @@ static void handle_modem_crash(void)
 	/* in this case the modem or watchdog should reboot us */
 	for (;;)
 		;
+#endif
 }
 
 int smsm_check_for_modem_crash(void)
@@ -1375,6 +1435,14 @@ void smsm_reset_modem(unsigned mode)
 		mode = SMSM_RESET | SMSM_SYSTEM_DOWNLOAD;
 	} else if (mode == SMSM_MODEM_WAIT) {
 		mode = SMSM_RESET | SMSM_MODEM_WAIT;
+#ifdef CONFIG_LGE_HANDLE_MODEM_CRASH
+    	} else if (mode == SMSM_SYSTEM_REBOOT ) {
+		mode = SMSM_RESET | SMSM_SYSTEM_REBOOT ;
+#endif
+#ifdef CONFIG_LGE_BLUE_ERROR_HANDLER
+	} else if (mode == SMSM_APPS_SHUTDOWN) {
+		mode = SMSM_APPS_SHUTDOWN;
+#endif
 	} else { /* reset_mode is SMSM_RESET or default */
 		mode = SMSM_RESET;
 	}
@@ -1401,6 +1469,9 @@ EXPORT_SYMBOL(smsm_reset_modem_cont);
 static irqreturn_t smsm_irq_handler(int irq, void *data)
 {
 	unsigned long flags;
+#ifdef CONFIG_LGE_BLUE_ERROR_HANDLER
+	int ret;
+#endif
 
 #if !defined(CONFIG_ARCH_MSM8X60)
 	uint32_t mux_val;
@@ -1446,7 +1517,38 @@ static irqreturn_t smsm_irq_handler(int irq, void *data)
 
 		} else if (modm & SMSM_RESET) {
 			apps |= SMSM_RESET;
+#ifdef CONFIG_LGE_BLUE_ERROR_HANDLER
+			if(!LG_ErrorHandler_enable) {
+				smd_diag();
+				ret = LGE_ErrorHandler_Main(MODEM_CRASH,error_modem_message);
+				smsm_reset_modem(ret);
+				while(1);
+				;
+			}
+#else
+#ifdef CONFIG_LGE_HANDLE_MODEM_CRASH
+			printk(KERN_INFO">>>>>\n");
+			printk(KERN_INFO"Modem crash\n");
+			printk(KERN_INFO"<<<<<\n");
 
+			smd_diag();
+			
+			/* flush console before reboot
+			 * from google's mahimahi kernel
+			 * 2010-05-04, cleaneye.kim@lge.com
+			 */
+			msm_pm_flush_console();
+			
+			atomic_notifier_call_chain(&panic_notifier_list, 0, (void *)0x87654321);
+#if 1
+			smsm_reset_modem(SMSM_SYSTEM_REBOOT);
+#else
+			smsm_reset_modem(SMSM_SYSTEM_DOWNLOAD);
+#endif	
+
+			while (1);
+#endif
+#endif
 			pr_err("\nSMSM: Modem SMSM state changed to SMSM_RESET.");
 			modem_queue_start_reset_notify();
 
@@ -1570,6 +1672,40 @@ uint32_t smsm_get_state(uint32_t smsm_entry)
 
 	return rv;
 }
+
+
+#ifdef CONFIG_MACH_LGE
+/* Make a api to not report a changed SMSM state to other processor
+ * blue.park@lge.com 2010-04-14
+ */
+int smsm_change_state_nonotify(uint32_t smsm_entry,
+		      uint32_t clear_mask, uint32_t set_mask)
+{
+	unsigned long flags;
+	uint32_t  old_state, new_state;
+
+	if (smsm_entry >= SMSM_NUM_ENTRIES) {
+		pr_err("smsm_change_state: Invalid entry %d",
+		       smsm_entry);
+		return -EINVAL;
+	}
+
+	if (!smsm_info.state) {
+		pr_err("smsm_change_state <SM NO STATE>\n");
+		return -EIO;
+	}
+	spin_lock_irqsave(&smem_lock, flags);
+
+	old_state = readl(SMSM_STATE_ADDR(smsm_entry));
+	new_state = (old_state & ~clear_mask) | set_mask;
+	writel(new_state, SMSM_STATE_ADDR(smsm_entry));
+	SMSM_DBG("smsm_change_state %x\n", new_state);
+	
+	spin_unlock_irqrestore(&smem_lock, flags);
+
+	return 0;
+}
+#endif
 
 int smd_core_init(void)
 {

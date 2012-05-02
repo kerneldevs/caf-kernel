@@ -176,6 +176,7 @@ static inline int valid_user_regs(struct pt_regs *regs)
 	 * Force CPSR to something logical...
 	 */
 	regs->ARM_cpsr &= PSR_f | PSR_s | PSR_x | PSR_T_BIT | MODE32_BIT;
+
 	if (!(elf_hwcap & HWCAP_26BIT))
 		regs->ARM_cpsr |= USR_MODE;
 

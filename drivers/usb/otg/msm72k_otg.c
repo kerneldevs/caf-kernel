@@ -40,6 +40,7 @@
 #define MSM_USB_BASE	(dev->regs)
 #define USB_LINK_RESET_TIMEOUT	(msecs_to_jiffies(10))
 #define DRIVER_NAME	"msm_otg"
+
 static void otg_reset(struct otg_transceiver *xceiv, int phy_reset);
 static void msm_otg_set_vbus_state(int online);
 static void msm_otg_set_id_state(int online);
@@ -529,8 +530,27 @@ static int msm_otg_set_power(struct otg_transceiver *xceiv, unsigned mA)
 		pdata->chg_vbus_draw(charge);
 
 	if (new_chg == USB_CHG_TYPE__WALLCHARGER) {
+#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_GADGET
+		/* LGE_CHANGE
+		 * When factory cable is connected, skip lpm.
+		 * 2011-01-23, hyunhui.park@lge.com
+		 */
+		int is_factory_cable = atomic_read(&dev->lgeusb_cable_type);
+#endif
+
+#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_GADGET
+		/* LGE_CHANGE
+		 * When factory cable is connected, skip lpm.
+		 * 2011-01-23, hyunhui.park@lge.com
+		 */
+		if (!is_factory_cable) {
+			wake_lock(&dev->wlock);
+			queue_work(dev->wq, &dev->sm_work);
+		}
+#else
 		wake_lock(&dev->wlock);
 		queue_work(dev->wq, &dev->sm_work);
+#endif
 	}
 
 	return 0;
@@ -2430,6 +2450,7 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 	}
 
 	if (!dev->pdata->pclk_is_hw_gated) {
+		pr_info("%s: clk_get - usb_hs_clk\n", __func__);
 		dev->hs_pclk = clk_get(&pdev->dev, "usb_hs_pclk");
 		if (IS_ERR(dev->hs_pclk)) {
 			pr_err("%s: failed to get usb_hs_pclk\n", __func__);
@@ -2440,6 +2461,7 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 	}
 
 	if (dev->pdata->core_clk) {
+		pr_info("%s: clk_get - usb_hs_core_clk\n", __func__);
 		dev->hs_cclk = clk_get(&pdev->dev, "usb_hs_core_clk");
 		if (IS_ERR(dev->hs_cclk)) {
 			pr_err("%s: failed to get usb_hs_core_clk\n", __func__);
@@ -2450,6 +2472,7 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 	}
 
 	if (!dev->pdata->phy_reset) {
+		pr_info("%s: clk_get - usb_phy_clk\n", __func__);
 		dev->phy_reset_clk = clk_get(&pdev->dev, "usb_phy_clk");
 		if (IS_ERR(dev->phy_reset_clk)) {
 			pr_err("%s: failed to get usb_phy_clk\n", __func__);
@@ -2640,6 +2663,9 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 	}
 #endif
 
+#ifdef CONFIG_USB_SUPPORT_LGE_ANDROID_GADGET
+	atomic_set(&dev->lgeusb_cable_type, 0);
+#endif
 
 	return 0;
 

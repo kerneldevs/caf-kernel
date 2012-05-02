@@ -915,7 +915,7 @@ void mmc_set_timing(struct mmc_host *host, unsigned int timing)
  * If a host does all the power sequencing itself, ignore the
  * initial MMC_POWER_UP stage.
  */
-static void mmc_power_up(struct mmc_host *host)
+void mmc_power_up(struct mmc_host *host)
 {
 	int bit;
 
@@ -942,9 +942,12 @@ static void mmc_power_up(struct mmc_host *host)
 	 * This delay should be sufficient to allow the power supply
 	 * to reach the minimum voltage.
 	 */
-	mmc_delay(10);
+/*LGE_UPDATE_S DYLEE */
+	mmc_delay(20);	
+/* mmc_delay(10);	*/
+/*LGE_UPDATE_E DYLEE */
 
-	host->ios.clock = host->f_min;
+		host->ios.clock = host->f_min;
 
 	host->ios.power_mode = MMC_POWER_ON;
 	mmc_set_ios(host);
@@ -953,10 +956,14 @@ static void mmc_power_up(struct mmc_host *host)
 	 * This delay must be at least 74 clock sizes, or 1 ms, or the
 	 * time required to reach a stable voltage.
 	 */
-	mmc_delay(10);
+/*LGE_UPDATE_S DYLEE */
+/*	mmc_delay(20);	*/
+ mmc_delay(10);	
+/*LGE_UPDATE_E DYLEE */
 }
+EXPORT_SYMBOL(mmc_power_up);
 
-static void mmc_power_off(struct mmc_host *host)
+void mmc_power_off(struct mmc_host *host)
 {
 	host->ios.clock = 0;
 	host->ios.vdd = 0;
@@ -969,6 +976,7 @@ static void mmc_power_off(struct mmc_host *host)
 	host->ios.timing = MMC_TIMING_LEGACY;
 	mmc_set_ios(host);
 }
+EXPORT_SYMBOL(mmc_power_off);
 
 /*
  * Cleanup when the last reference to the bus operator is dropped.
@@ -1120,7 +1128,23 @@ void mmc_rescan(struct work_struct *work)
 	u32 ocr;
 	int err;
 	int extend_wakelock = 0;
+	int ret;
+
 	unsigned long flags;
+
+	/*
+        * Add checking gpio pin status before initialization of bus.
+        * If the GPIO pin status is changed, check gpio pin status again.
+        * Should check until it's stable.
+        * fred.cho@lge.com, 2010-09-27
+        */
+	if (host->ops->get_status){
+		ret = host->ops->get_status(host);
+		if (ret == 1) {
+			mmc_schedule_delayed_work(&host->detect, HZ / 3);
+			return;
+		}
+	}
 
 	spin_lock_irqsave(&host->lock, flags);
 	if (host->rescan_disable) {

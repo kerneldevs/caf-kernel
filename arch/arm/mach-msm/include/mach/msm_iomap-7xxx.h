@@ -99,4 +99,11 @@
 #define MSM_AD5_PHYS          0xAC000000
 #define MSM_AD5_SIZE          (SZ_1M*13)
 
+#if defined(CONFIG_MACH_LGE)
+/* vibrator for MN Register */
+#define MSM_WEB_BASE          IOMEM(0xFB00C000)
+#define MSM_WEB_PHYS          0xA9D00040 //0xA9D00000 in code.
+#define MSM_WEB_SIZE          SZ_4K
+#endif /* CONFIG_MACH_LGE */
+
 #endif

@@ -276,6 +276,7 @@ struct msmsdcc_host {
 	struct wake_lock	sdio_suspend_wlock;
 	unsigned int    sdcc_suspending;
 
+	struct timer_list    check_timer;
 	unsigned int sdcc_irq_disabled;
 	struct timer_list req_tout_timer;
 	bool sdio_gpio_lpm;
