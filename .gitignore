@@ -77,3 +77,12 @@ GTAGS
 *.orig
 *~
 \#*#
+
+# other files
+def
+setup-ev
+zip
+# Cyanogenmod configs
+cyanogenmod_thunderg_defconfig
+cyanogenmod_muscat_defconfig
+cyanogenmod_univa_defconfig
