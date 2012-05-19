@@ -484,7 +484,8 @@ static void acpuclk_set_div(const struct clkctl_acpu_speed *hunt_s)
 	reg_clksel ^= 1;
 	writel(reg_clksel, A11S_CLK_SEL_ADDR);
 
-#ifdef CONFIG_MSM7X27_OVERCLOCK
+//#ifdef CONFIG_MSM7X27_OVERCLOCK
+#if 0
         if (hunt_s->pll == ACPU_PLL_0 && hunt_s->a11clk_khz <= 600000) {
 		if ((readl(PLLn_L_VAL(0)) & 0x3f) != PLL_960_MHZ) {
 			/* Restore PLL0 to standard config */
