@@ -53,7 +53,7 @@ static struct snd_endpoint snd_endpoints_list[] = {
 	SND(HANDSET_VR, 20),
 	SND(HEADSET_VR, 21),
 	SND(BT_VR, 23),
-	SND(CURRENT, 30),
+	SND(CURRENT, 29),
 /* LGE_CHANGE_E, [junyoub.an] , 2010-02-12, Define sound device*/
 
 #endif
