@@ -718,7 +718,7 @@ config TOUCHSCREEN_MCS6000
 
 config TOUCHSCREEN_MCS6000_LGP500
         default n
-        tristate "MCS6000 touchscreen for LG P500"
+        tristate "MCS6000 touchscreen for LG-P500, rewritten by Der_Caveman."
         depends on I2C
         help
           Say Y here if you have a LG P500 Optimus One mobile phone.
@@ -728,9 +728,9 @@ config TOUCHSCREEN_MCS6000_LGP500
           To compile this driver as a module, choose M here: the
           module will be called tsc2007.
 
-config TOUCHSCREEN_MCS6000_TA
+config TOUCHSCREEN_MCS6000_FIXED
         default n
-        tristate "thachtunganh MCS6000 touchscreen driver for LG P500"
+        tristate "Fixed MCS6000 touchscreen for LG-P500"
         depends on I2C
         help
           Say Y here if you have a LG P500 Optimus One mobile phone.
