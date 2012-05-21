@@ -48,6 +48,7 @@
 #define MSM_PMEM_ADSP_SIZE	0xB71000
 #define MSM_PMEM_AUDIO_SIZE	0x5B000
 #define MSM_FB_SIZE		0x177000
+#define MSM_GPU_PHYS_SIZE	SZ_2M
 #define PMEM_KERNEL_EBI1_SIZE	0x1C000
 
 /* Using lower 1MB of OEMSBL memory for GPU_PHYS */
@@ -94,39 +95,18 @@ struct gpio_i2c_pin {
 };
 
 /* touch screen platform data */
-//LGE_DEV_PORTING UNIVA_S
-// [LGE PATCH : START] edward1.kim@lge.com 20110214  
-#if 1
-struct touch_platform_data {
-	int ts_x_min;
-	int ts_x_max;
-	int ts_y_min;
-	int ts_y_max;
-	int ts_y_start;
-	int ts_y_scrn_max;
-	int (*power)(unsigned char onoff);
-	int irq;
-	int gpio_int;// [LGE PATCH] edward1.kim@lge.com 20110214  
-	int hw_i2c;
-	int scl;
-	int sda;
-	int ce;
-	int touch_key;
-};
-#else
 struct touch_platform_data {
 	int ts_x_min;
 	int ts_x_max;
 	int ts_y_min;
 	int ts_y_max;
 	int (*power)(unsigned char onoff);
+	int (*pulldown)(int onoff);
 	int irq;
 	int scl;
 	int sda;
 };
-#endif
-// [LGE PATCH : END] edward1.kim@lge.com 20110214
-//LGE_DEV_PORTING UNIVA_E  
+
 /* pp2106 qwerty platform data */
 struct pp2106_platform_data {
 	unsigned int reset_pin;
@@ -136,7 +116,6 @@ struct pp2106_platform_data {
 	unsigned int keypad_row;
 	unsigned int keypad_col;
 	unsigned char *keycode;
-	int (*power)(unsigned char onoff);
 };
 
 /* atcmd virtual keyboard platform data */
@@ -181,30 +160,7 @@ struct acceleration_platform_data {
 	int (*power)(unsigned char onoff);
 };
 
-/* acceleration platform data */
-/* k3dh */
-
-struct k3dh_platform_data {
-	int poll_interval;
-	int min_interval;
-
-	u8 g_range;
-
-	u8 axis_map_x;
-	u8 axis_map_y;
-	u8 axis_map_z;
-
-	u8 negate_x;
-	u8 negate_y;
-	u8 negate_z;
-
-	int (*kr_init)(void);
-	void (*kr_exit)(void);
-	int (*power_on)(void);
-	int (*power_off)(void);
-	int (*gpio_config)(int config);
-};
-
+/* kr3dh acceleration platform data */
 struct kr3dh_platform_data {
 	int poll_interval;
 	int min_interval;
@@ -297,23 +253,11 @@ struct aat28xx_platform_data {
 	int gpio;
 	unsigned int mode;		     /* initial mode */
 	int max_current;			 /* led max current(0-7F) */
-	int initialized;			 /* flag which initialize on system boot */
+	int initialized;                         /* flag which initialize on system boot */
 	int version;				 /* Chip version number */
 };
 int aat28xx_ldo_enable(struct device *dev, unsigned num, unsigned enable);
 int aat28xx_ldo_set_level(struct device *dev, unsigned num, unsigned vol);
-void aat28xx_power(struct device *dev, int on);
-
-//LGE_DEV_PORTING UNIVA_S
-struct lm3530_platform_data {
-	void (*platform_init)(void);
-	int gpio;
-	unsigned int mode;		     /* initial mode */
-	int max_current;			 /* led max current(0-7F) */
-	int init_on_boot;			 /* flag which initialize on system boot */
-	int version;				 /* Chip version number */
-};
-//LGE_DEV_PORTING UNIVA_E
 
 /* rt9393 backlight */
 struct rt9393_platform_data {
@@ -332,10 +276,6 @@ struct msm_panel_lgit_pdata {
 };
 
 /* Define new structure named 'msm_panel_hitachi_pdata' */
-#define PANEL_ID_AUO          0
-#define PANEL_ID_HITACHI      1
-#define PANEL_ID_TOVIS        2
-#define PANEL_ID_LGDISPLAY    3
 struct msm_panel_hitachi_pdata {
 	int gpio;
 	int (*backlight_level)(int level, int max, int min);
@@ -344,32 +284,6 @@ struct msm_panel_hitachi_pdata {
 	void (*panel_config_gpio)(int);
 	int *gpio_num;
 	int initialized;
-	int maker_id;
-};
-
-
-
-// LGE_DEV_PORTING UNIVA_S [ks82.jung@lge.com]
-/* Define new structure named 'msm_panel_ldp_pdata' */
-#define PANEL_ID_AUO      0
-#define PANEL_ID_LDP      1
-struct msm_panel_ldp_pdata {
-	int gpio;
-	int (*backlight_level)(int level, int max, int min);
-	int (*pmic_backlight)(int level);
-	int (*panel_num)(void);
-	void (*panel_config_gpio)(int);
-	int *gpio_num;
-	int initialized;
-	int maker_id;
-};
-// LGE_DEV_PORTING UNIVA_E [ks82.jung@lge.com]
-
-struct msm_panel_ilitek_pdata {
-	int gpio;
-	int initialized;
-	int maker_id;
-	int (*lcd_power_save)(int);
 };
 
 struct msm_panel_novatek_pdata {
@@ -412,10 +326,13 @@ enum {
 	REBOOT_KEY_PRESS = 0,
 	REBOOT_KEY_NOT_PRESS,
 };
+
 extern int hidden_reset_enable;
+#ifdef CONFIG_LGE_HIDDEN_RESET_PATCH
 extern int on_hidden_reset;
 void *lge_get_fb_addr(void);
 void *lge_get_fb_copy_phys_addr(void);
+#endif
 void *lge_get_fb_copy_virt_addr(void);
 
 struct lge_panic_handler_platform_data {
@@ -427,7 +344,6 @@ void lge_set_reboot_reason(unsigned int reason);
 int lge_gpio_switch_pass_event(char *sdev_name, int state);
 unsigned lge_get_pif_info(void);
 unsigned lge_get_lpm_info(void);
-
 unsigned lge_get_batt_volt(void);
 unsigned lge_get_chg_therm(void);
 unsigned lge_get_pcb_version(void);
