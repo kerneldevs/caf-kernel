@@ -718,10 +718,10 @@ config TOUCHSCREEN_MCS6000
 
 config TOUCHSCREEN_MCS6000_LGP500
         default n
-        tristate "MCS6000 touchscreen for LG-P500, rewritten by Der_Caveman."
+        tristate "Rewritten MCS6000 touchscreen for LG-P500 by DerCaveman"
         depends on I2C
         help
-          Say Y here if you have a LG P500 Optimus One mobile phone.
+          Say Y here if you have a LG P500 mobile phone.
 
           If unsure, say N.
 
@@ -730,10 +730,10 @@ config TOUCHSCREEN_MCS6000_LGP500
 
 config TOUCHSCREEN_MCS6000_FIXED
         default n
-        tristate "Fixed MCS6000 touchscreen for LG-P500"
+        tristate "Fixed MCS6000 touchscreen for LG-P500 by TA"
         depends on I2C
         help
-          Say Y here if you have a LG P500 Optimus One mobile phone.
+          Say Y here if you have a LG-P500 mobile phone.
 
           If unsure, say N.
 
