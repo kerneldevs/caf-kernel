@@ -201,7 +201,9 @@ static struct clkctl_acpu_speed pll0_196_pll1_960_pll2_1200[] = {
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0}, {0, 0, 0} }
 };
 
-/* 7x27 normal with GSM capable modem - PLL0 and PLL1 swapped */
+/* 7x27 normal with GSM capable modem - PLL0 and PLL1 swapped
+ * Use agressive AHB overclocking 
+ */
 static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200[] = {
 	{ 0, 19200, ACPU_PLL_TCXO, 0, 0, 19200, 0, 0, 30720 },
 	{ 0, 120000, ACPU_PLL_0, 4, 7,  60000, 1, 3,  61440 },
@@ -212,8 +214,6 @@ static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200[] = {
 	{ 0, 400000, ACPU_PLL_2, 2, 2, 133333, 2, 5, 122880 },
 	{ 1, 480000, ACPU_PLL_0, 4, 1, 240000, 1, 6, 240000 },
 	{ 1, 600000, ACPU_PLL_2, 2, 1, 300000, 1, 7, 300000 },
-#ifndef OVERCLOCK_AHB
-/* Agressive AHB overclocking */
 	{ 1, 652800, ACPU_PLL_0, 4, 0, 326400, 1, 7, 326400 },
 	{ 1, 672000, ACPU_PLL_0, 4, 0, 336000, 1, 7, 336000 },
 	{ 1, 691200, ACPU_PLL_0, 4, 0, 345600, 1, 7, 345600 },
@@ -223,7 +223,6 @@ static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200[] = {
 	{ 1, 768000, ACPU_PLL_0, 4, 0, 384000, 1, 7, 384600 },
 	{ 1, 787200, ACPU_PLL_0, 4, 0, 393600, 1, 7, 393600 },
 	{ 1, 806400, ACPU_PLL_0, 4, 0, 403200, 1, 7, 403200 },
-#endif
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0}, {0, 0, 0} }
 };
 
