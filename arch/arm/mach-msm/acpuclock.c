@@ -213,7 +213,7 @@ static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200[] = {
 	{ 1, 480000, ACPU_PLL_0, 4, 1, 240000, 1, 6, 240000 },
 	{ 1, 600000, ACPU_PLL_2, 2, 1, 300000, 1, 7, 300000 },
 #ifndef OVERCLOCK_AHB
-/* Aggressive AHB overclocking */
+/* Agressive AHB overclocking */
 	{ 1, 652800, ACPU_PLL_0, 4, 0, 326400, 1, 7, 326400 },
 	{ 1, 672000, ACPU_PLL_0, 4, 0, 336000, 1, 7, 336000 },
 	{ 1, 691200, ACPU_PLL_0, 4, 0, 345600, 1, 7, 345600 },
