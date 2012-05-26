@@ -117,4 +117,3 @@ kgsl_cmdstream_freememontimestamp(struct kgsl_device *device,
 
 	list_add_tail(&entry->list, &device->memqueue);
 }
-
